@@ -1,17 +1,25 @@
-import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  SafeAreaView,
-  StatusBar,
-} from 'react-native';
-import { Colors, Typography, Spacing, Radius } from '@/src/constants/theme';
+import { Colors, Radius, Spacing, Typography } from '@/src/constants/theme';
+import { useAuth } from '@/src/contexts/AuthContext';
 import { PRODUTOS_MOCK, Produto, StatusEstoque, getStatus } from '@/src/data/mockData';
+import React, { useCallback, useState } from 'react';
+import {
+    FlatList,
+    RefreshControl,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    View,
+} from 'react-native';
 
-const NOME_USUARIO = 'Gustavo';
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getSaudacao(): string {
+  const hora = new Date().getHours();
+  if (hora < 12) return 'Bom dia';
+  if (hora < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
 
 function getDataHoje(): string {
   return new Date().toLocaleDateString('pt-BR', {
@@ -20,6 +28,12 @@ function getDataHoje(): string {
     month: 'long',
   });
 }
+
+function getInicial(nome: string): string {
+  return nome.trim().charAt(0).toUpperCase();
+}
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: StatusEstoque }) {
   const config = {
@@ -53,9 +67,15 @@ function ProdutoItem({ produto }: { produto: Produto }) {
   );
 }
 
+// ─── Screen ──────────────────────────────────────────────────────────────────
+
 export default function DashboardHome() {
+  const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [produtos, setProdutos] = useState(PRODUTOS_MOCK);
+
+  const nomeUsuario = user?.nome ?? 'Usuário';
+  const inicial = getInicial(nomeUsuario);
 
   const produtosAlerta = produtos.filter((p) => getStatus(p) !== 'normal');
   const totalProdutos = produtos.length;
@@ -85,8 +105,17 @@ export default function DashboardHome() {
   const ListHeader = () => (
     <View>
       <View style={styles.header}>
-        <Text style={styles.greeting}>Olá, {NOME_USUARIO} 👋</Text>
-        <Text style={styles.date}>{getDataHoje()}</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.headerText}>
+            <Text style={styles.greeting}>
+              {getSaudacao()}, {nomeUsuario} 👋
+            </Text>
+            <Text style={styles.date}>{getDataHoje()}</Text>
+          </View>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{inicial}</Text>
+          </View>
+        </View>
       </View>
 
       <View style={styles.cardsGrid}>
@@ -152,6 +181,14 @@ const styles = StyleSheet.create({
     paddingTop: Spacing[6],
     paddingBottom: Spacing[4],
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerText: {
+    flex: 1,
+  },
   greeting: {
     fontSize: Typography.fontSize['2xl'],
     fontWeight: Typography.fontWeight.bold,
@@ -162,6 +199,20 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: Spacing[1],
     textTransform: 'capitalize',
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primary[500],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: Spacing[3],
+  },
+  avatarText: {
+    color: Colors.white,
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
   },
   cardsGrid: {
     flexDirection: 'row',
