@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/src/constants/theme';
 import { AuthProvider, useAuth } from '@/src/contexts/AuthContext';
+import { ProductsProvider } from '@/src/contexts/ProductsContext';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -65,7 +66,9 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootLayoutNav />
+      <ProductsProvider>
+        <RootLayoutNav />
+      </ProductsProvider>
     </AuthProvider>
   );
 }

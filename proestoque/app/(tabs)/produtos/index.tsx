@@ -1,16 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import { Colors, Radius, Spacing, Typography } from '@/src/constants/theme';
+import { useProducts } from '@/src/contexts/ProductsContext';
+import { CATEGORIAS, Produto, StatusEstoque, getStatus } from '@/src/data/mockData';
+import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  StatusBar,
+    FlatList,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { Colors, Typography, Spacing, Radius } from '@/src/constants/theme';
-import { PRODUTOS_MOCK, CATEGORIAS, Produto, StatusEstoque, getStatus } from '@/src/data/mockData';
 
 function StatusBadge({ status }: { status: StatusEstoque }) {
   const config = {
@@ -26,10 +29,10 @@ function StatusBadge({ status }: { status: StatusEstoque }) {
   );
 }
 
-function ProdutoItem({ produto }: { produto: Produto }) {
+function ProdutoItem({ produto, onPress }: { produto: Produto; onPress: () => void }) {
   const status = getStatus(produto);
   return (
-    <View style={styles.produtoCard}>
+    <TouchableOpacity style={styles.produtoCard} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.produtoInfo}>
         <Text style={styles.produtoNome}>{produto.nome}</Text>
         <Text style={styles.produtoCategoria}>{produto.categoria}</Text>
@@ -43,21 +46,23 @@ function ProdutoItem({ produto }: { produto: Produto }) {
         </Text>
         <StatusBadge status={status} />
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 export default function ProdutosScreen() {
+  const { produtos } = useProducts();
+  const router = useRouter();
   const [busca, setBusca] = useState('');
   const [categoriaAtiva, setCategoriaAtiva] = useState('Todas');
 
   const produtosFiltrados = useMemo(() => {
-    return PRODUTOS_MOCK.filter((p) => {
+    return produtos.filter((p) => {
       const matchBusca = p.nome.toLowerCase().includes(busca.toLowerCase());
       const matchCategoria = categoriaAtiva === 'Todas' || p.categoria === categoriaAtiva;
       return matchBusca && matchCategoria;
     });
-  }, [busca, categoriaAtiva]);
+  }, [produtos, busca, categoriaAtiva]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -98,15 +103,30 @@ export default function ProdutosScreen() {
       <FlatList
         data={produtosFiltrados}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ProdutoItem produto={item} />}
+        renderItem={({ item }) => (
+          <ProdutoItem produto={item} onPress={() => router.push(`/produtos/${item.id}`)} />
+        )}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyTexto}>Nenhum produto encontrado</Text>
-            <Text style={styles.emptySubtexto}>Tente outro termo ou categoria</Text>
+            <Text style={styles.emptySubtexto}>
+              {produtos.length === 0
+                ? 'Adicione seu primeiro produto'
+                : 'Tente outro termo ou categoria'}
+            </Text>
           </View>
         }
       />
+
+      {/* FAB - Floating Action Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => router.push('/produtos/novo')}
+        activeOpacity={0.8}
+      >
+        <Feather name="plus" size={24} color={Colors.white} />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -227,5 +247,21 @@ const styles = StyleSheet.create({
   emptySubtexto: {
     fontSize: Typography.fontSize.base,
     color: Colors.textSecondary,
+  },
+  fab: {
+    position: 'absolute',
+    right: Spacing[4],
+    bottom: Spacing[4],
+    width: 56,
+    height: 56,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primary[500],
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
 });

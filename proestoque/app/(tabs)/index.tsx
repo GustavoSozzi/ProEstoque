@@ -1,6 +1,7 @@
 import { Colors, Radius, Spacing, Typography } from '@/src/constants/theme';
 import { useAuth } from '@/src/contexts/AuthContext';
-import { PRODUTOS_MOCK, Produto, StatusEstoque, getStatus } from '@/src/data/mockData';
+import { useProducts } from '@/src/contexts/ProductsContext';
+import { Produto, StatusEstoque, getStatus } from '@/src/data/mockData';
 import React, { useCallback, useState } from 'react';
 import {
     FlatList,
@@ -9,6 +10,7 @@ import {
     StatusBar,
     StyleSheet,
     Text,
+    TextInput,
     View,
 } from 'react-native';
 
@@ -71,15 +73,21 @@ function ProdutoItem({ produto }: { produto: Produto }) {
 
 export default function DashboardHome() {
   const { user } = useAuth();
+  const { produtos } = useProducts();
   const [refreshing, setRefreshing] = useState(false);
-  const [produtos, setProdutos] = useState(PRODUTOS_MOCK);
+  const [busca, setBusca] = useState('');
 
   const nomeUsuario = user?.nome ?? 'Usuário';
   const inicial = getInicial(nomeUsuario);
 
-  const produtosAlerta = produtos.filter((p) => getStatus(p) !== 'normal');
+  // Filtrar produtos pela busca
+  const produtosFiltrados = produtos.filter((p) =>
+    p.nome.toLowerCase().includes(busca.toLowerCase())
+  );
+
+  const produtosAlerta = produtosFiltrados.filter((p) => getStatus(p) !== 'normal');
   const totalProdutos = produtos.length;
-  const totalAlertas = produtosAlerta.length;
+  const totalAlertas = produtos.filter((p) => getStatus(p) !== 'normal').length;
   const totalCategorias = new Set(produtos.map((p) => p.categoria)).size;
   const valorTotal = produtos.reduce((acc, p) => acc + p.preco * p.quantidade, 0);
 
@@ -97,7 +105,6 @@ export default function DashboardHome() {
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => {
-      setProdutos([...PRODUTOS_MOCK]);
       setRefreshing(false);
     }, 1000);
   }, []);
@@ -142,7 +149,22 @@ export default function DashboardHome() {
         </View>
       )}
 
-      <Text style={styles.sectionTitle}>Produtos Recentes</Text>
+      {/* Campo de busca */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar produto..."
+          placeholderTextColor={Colors.textSecondary}
+          value={busca}
+          onChangeText={setBusca}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      </View>
+
+      <Text style={styles.sectionTitle}>
+        {busca ? `Resultados (${produtosFiltrados.length})` : 'Produtos Recentes'}
+      </Text>
     </View>
   );
 
@@ -150,7 +172,7 @@ export default function DashboardHome() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.appBackground} />
       <FlatList
-        data={produtos}
+        data={produtosFiltrados}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <ProdutoItem produto={item} />}
         ListHeaderComponent={ListHeader}
@@ -162,6 +184,14 @@ export default function DashboardHome() {
             colors={[Colors.primary[500]]}
             tintColor={Colors.primary[500]}
           />
+        }
+        ListEmptyComponent={
+          busca ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Nenhum produto encontrado</Text>
+              <Text style={styles.emptySubtext}>Tente outro termo de busca</Text>
+            </View>
+          ) : null
         }
       />
     </SafeAreaView>
@@ -281,6 +311,35 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     marginHorizontal: Spacing[4],
     marginBottom: Spacing[3],
+  },
+  searchContainer: {
+    paddingHorizontal: Spacing[4],
+    marginBottom: Spacing[3],
+  },
+  searchInput: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing[4],
+    paddingVertical: Spacing[3],
+    fontSize: Typography.fontSize.base,
+    color: Colors.textPrimary,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing[8],
+  },
+  emptyText: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.semibold,
+    color: Colors.textPrimary,
+    marginBottom: Spacing[1],
+  },
+  emptySubtext: {
+    fontSize: Typography.fontSize.base,
+    color: Colors.textSecondary,
   },
   produtoCard: {
     flexDirection: 'row',
