@@ -1,0 +1,177 @@
+{
+  "clientName": "Thunder Client",
+  "collectionName": "ProEstoque API Tests",
+  "collectionId": "proestoque-api",
+  "dateExported": "2024-01-15",
+  "version": "1.0",
+  "folders": [],
+  "requests": [
+    {
+      "name": "1. GET /api/produtos - Listar todos",
+      "method": "GET",
+      "url": "http://localhost:3333/api/produtos",
+      "headers": [],
+      "tests": [
+        {
+          "type": "res-code",
+          "value": "200"
+        },
+        {
+          "type": "res-body",
+          "value": "Array.isArray(json)"
+        }
+      ]
+    },
+    {
+      "name": "2. GET /api/categorias - Listar 5 categorias",
+      "method": "GET",
+      "url": "http://localhost:3333/api/categorias",
+      "headers": [],
+      "tests": [
+        {
+          "type": "res-code",
+          "value": "200"
+        },
+        {
+          "type": "res-body",
+          "value": "json.length === 5"
+        }
+      ]
+    },
+    {
+      "name": "3. POST /api/produtos - Criar produto",
+      "method": "POST",
+      "url": "http://localhost:3333/api/produtos",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"nome\": \"Produto Teste\",\n  \"descricao\": \"Descrição do produto teste\",\n  \"quantidade\": 10,\n  \"quantidadeMinima\": 5,\n  \"preco\": 99.90,\n  \"unidade\": \"un\",\n  \"categoriaId\": \"{{categoriaId}}\",\n  \"usuarioId\": \"{{usuarioId}}\"\n}"
+      },
+      "tests": [
+        {
+          "type": "res-code",
+          "value": "201"
+        },
+        {
+          "type": "res-body",
+          "value": "json.id"
+        },
+        {
+          "type": "set-env-var",
+          "value": "produtoId:json.id"
+        }
+      ]
+    },
+    {
+      "name": "4. GET /api/produtos/:id - Buscar por ID",
+      "method": "GET",
+      "url": "http://localhost:3333/api/produtos/{{produtoId}}",
+      "headers": [],
+      "tests": [
+        {
+          "type": "res-code",
+          "value": "200"
+        },
+        {
+          "type": "res-body",
+          "value": "json.categoria"
+        },
+        {
+          "type": "res-body",
+          "value": "json.usuario"
+        }
+      ]
+    },
+    {
+      "name": "5. PUT /api/produtos/:id - Atualizar",
+      "method": "PUT",
+      "url": "http://localhost:3333/api/produtos/{{produtoId}}",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"quantidade\": 20,\n  \"preco\": 89.90\n}"
+      },
+      "tests": [
+        {
+          "type": "res-code",
+          "value": "200"
+        },
+        {
+          "type": "res-body",
+          "value": "json.quantidade === 20"
+        }
+      ]
+    },
+    {
+      "name": "6. DELETE /api/produtos/:id - Deletar",
+      "method": "DELETE",
+      "url": "http://localhost:3333/api/produtos/{{produtoId}}",
+      "headers": [],
+      "tests": [
+        {
+          "type": "res-code",
+          "value": "204"
+        }
+      ]
+    },
+    {
+      "name": "7. GET /api/produtos/id-errado - 404",
+      "method": "GET",
+      "url": "http://localhost:3333/api/produtos/id-invalido-123",
+      "headers": [],
+      "tests": [
+        {
+          "type": "res-code",
+          "value": "404"
+        },
+        {
+          "type": "res-body",
+          "value": "json.status === 'error'"
+        },
+        {
+          "type": "res-body",
+          "value": "json.message"
+        }
+      ]
+    },
+    {
+      "name": "8. POST /api/produtos - Sem campos (400)",
+      "method": "POST",
+      "url": "http://localhost:3333/api/produtos",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "type": "json",
+        "raw": "{}"
+      },
+      "tests": [
+        {
+          "type": "res-code",
+          "value": "400"
+        },
+        {
+          "type": "res-body",
+          "value": "json.status === 'error'"
+        },
+        {
+          "type": "res-body",
+          "value": "json.message"
+        }
+      ]
+    }
+  ]
+}
