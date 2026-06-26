@@ -1,0 +1,8 @@
+# Pastas de trabalho local - não commitar
+backend/
+
+# Arquivos comuns para ignorar
+node_modules/
+.env
+*.log
+.DS_Store
