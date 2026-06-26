@@ -3,7 +3,8 @@ import { z } from 'zod';
 export const produtoSchema = z.object({
   id: z.string().optional(),
   nome: z.string().min(1, 'Nome é obrigatório').trim(),
-  categoria: z.string().min(1, 'Categoria é obrigatória'),
+  categoriaId: z.string().min(1, 'Categoria é obrigatória'),
+  descricao: z.string().optional(),
   quantidade: z.number({
     required_error: 'Quantidade é obrigatória',
     invalid_type_error: 'Quantidade deve ser um número',

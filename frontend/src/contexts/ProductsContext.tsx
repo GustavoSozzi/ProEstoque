@@ -1,97 +1,111 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useContext, useEffect, useReducer } from 'react';
-import { Produto, PRODUTOS_MOCK } from '../data/mockData';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import api from '../services/api';
+import { useAuth } from './AuthContext';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type ProductsAction =
-  | { type: 'LOAD'; payload: Produto[] }
-  | { type: 'ADD'; payload: Produto }
-  | { type: 'UPDATE'; payload: Produto }
-  | { type: 'DELETE'; payload: string };
+export interface Produto {
+  id: string;
+  nome: string;
+  descricao?: string;
+  quantidade: number;
+  quantidadeMinima: number;
+  preco: number;
+  unidade: string;
+  categoriaId: string;
+  usuarioId: string;
+  createdAt: string;
+  updatedAt: string;
+  categoria?: {
+    id: string;
+    nome: string;
+  };
+}
 
 interface ProductsContextType {
   produtos: Produto[];
-  adicionarProduto: (produto: Omit<Produto, 'id'>) => Promise<void>;
-  editarProduto: (produto: Produto) => Promise<void>;
+  isLoading: boolean;
+  error: string | null;
+  adicionarProduto: (produto: Omit<Produto, 'id' | 'usuarioId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  editarProduto: (id: string, produto: Partial<Omit<Produto, 'id' | 'usuarioId' | 'createdAt' | 'updatedAt'>>) => Promise<void>;
   excluirProduto: (id: string) => Promise<void>;
   buscarProdutoPorId: (id: string) => Produto | undefined;
+  carregarProdutos: () => Promise<void>;
 }
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
 const ProductsContext = createContext<ProductsContextType | null>(null);
 
-const STORAGE_KEY = '@proestoque:produtos';
-
-// ─── Reducer ─────────────────────────────────────────────────────────────────
-
-function productsReducer(state: Produto[], action: ProductsAction): Produto[] {
-  switch (action.type) {
-    case 'LOAD':
-      return action.payload;
-    case 'ADD':
-      return [...state, action.payload];
-    case 'UPDATE':
-      return state.map((p) => (p.id === action.payload.id ? action.payload : p));
-    case 'DELETE':
-      return state.filter((p) => p.id !== action.payload);
-    default:
-      return state;
-  }
-}
-
 // ─── Provider ────────────────────────────────────────────────────────────────
 
 export function ProductsProvider({ children }: { children: React.ReactNode }) {
-  const [produtos, dispatch] = useReducer(productsReducer, []);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { isAuthenticated } = useAuth();
 
-  // Load products from AsyncStorage on mount
+  // Carregar produtos da API
+  const carregarProdutos = async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await api.get('/produtos');
+      setProdutos(response.data);
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Erro ao carregar produtos';
+      setError(message);
+      console.error('Erro ao carregar produtos:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Carregar produtos quando autenticado
   useEffect(() => {
-    async function loadProdutos() {
-      try {
-        const stored = await AsyncStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          dispatch({ type: 'LOAD', payload: JSON.parse(stored) });
-        } else {
-          // Se não houver produtos salvos, carrega os dados mock
-          dispatch({ type: 'LOAD', payload: PRODUTOS_MOCK });
-        }
-      } catch (error) {
-        console.error('Erro ao carregar produtos:', error);
-      }
+    if (isAuthenticated) {
+      carregarProdutos();
+    } else {
+      setProdutos([]);
     }
-    loadProdutos();
-  }, []);
+  }, [isAuthenticated]);
 
-  // Save to AsyncStorage whenever produtos change
-  useEffect(() => {
-    async function saveProdutos() {
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(produtos));
-      } catch (error) {
-        console.error('Erro ao salvar produtos:', error);
-      }
+  async function adicionarProduto(produto: Omit<Produto, 'id' | 'usuarioId' | 'createdAt' | 'updatedAt'>) {
+    try {
+      setError(null);
+      const response = await api.post('/produtos', produto);
+      setProdutos((prev) => [...prev, response.data]);
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Erro ao adicionar produto';
+      setError(message);
+      throw new Error(message);
     }
-    if (produtos.length > 0) {
-      saveProdutos();
-    }
-  }, [produtos]);
-
-  async function adicionarProduto(produto: Omit<Produto, 'id'>) {
-    const novoProduto: Produto = {
-      ...produto,
-      id: Date.now().toString(),
-    };
-    dispatch({ type: 'ADD', payload: novoProduto });
   }
 
-  async function editarProduto(produto: Produto) {
-    dispatch({ type: 'UPDATE', payload: produto });
+  async function editarProduto(id: string, produto: Partial<Omit<Produto, 'id' | 'usuarioId' | 'createdAt' | 'updatedAt'>>) {
+    try {
+      setError(null);
+      const response = await api.put(`/produtos/${id}`, produto);
+      setProdutos((prev) => prev.map((p) => (p.id === id ? response.data : p)));
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Erro ao editar produto';
+      setError(message);
+      throw new Error(message);
+    }
   }
 
   async function excluirProduto(id: string) {
-    dispatch({ type: 'DELETE', payload: id });
+    try {
+      setError(null);
+      await api.delete(`/produtos/${id}`);
+      setProdutos((prev) => prev.filter((p) => p.id !== id));
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Erro ao excluir produto';
+      setError(message);
+      throw new Error(message);
+    }
   }
 
   function buscarProdutoPorId(id: string): Produto | undefined {
@@ -102,10 +116,13 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
     <ProductsContext.Provider
       value={{
         produtos,
+        isLoading,
+        error,
         adicionarProduto,
         editarProduto,
         excluirProduto,
         buscarProdutoPorId,
+        carregarProdutos,
       }}
     >
       {children}
@@ -122,3 +139,4 @@ export function useProducts(): ProductsContextType {
   }
   return ctx;
 }
+

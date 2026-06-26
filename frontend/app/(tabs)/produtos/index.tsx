@@ -1,11 +1,14 @@
 import { Colors, Radius, Spacing, Typography } from '@/src/constants/theme';
 import { useProducts } from '@/src/contexts/ProductsContext';
-import { CATEGORIAS, Produto, StatusEstoque, getStatus } from '@/src/data/mockData';
+import { useCategorias } from '@/src/hooks/useCategorias';
+import { LoadingView } from '@/src/components/LoadingView';
+import { ErrorView } from '@/src/components/ErrorView';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
     FlatList,
+    RefreshControl,
     SafeAreaView,
     StatusBar,
     StyleSheet,
@@ -14,6 +17,14 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+
+type StatusEstoque = 'normal' | 'baixo' | 'sem_estoque';
+
+function getStatus(quantidade: number, quantidadeMinima: number): StatusEstoque {
+  if (quantidade === 0) return 'sem_estoque';
+  if (quantidade <= quantidadeMinima) return 'baixo';
+  return 'normal';
+}
 
 function StatusBadge({ status }: { status: StatusEstoque }) {
   const config = {
@@ -29,13 +40,13 @@ function StatusBadge({ status }: { status: StatusEstoque }) {
   );
 }
 
-function ProdutoItem({ produto, onPress }: { produto: Produto; onPress: () => void }) {
-  const status = getStatus(produto);
+function ProdutoItem({ produto, onPress }: { produto: any; onPress: () => void }) {
+  const status = getStatus(produto.quantidade, produto.quantidadeMinima);
   return (
     <TouchableOpacity style={styles.produtoCard} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.produtoInfo}>
         <Text style={styles.produtoNome}>{produto.nome}</Text>
-        <Text style={styles.produtoCategoria}>{produto.categoria}</Text>
+        <Text style={styles.produtoCategoria}>{produto.categoria?.nome || 'Sem categoria'}</Text>
       </View>
       <View style={styles.produtoRight}>
         <Text style={styles.produtoPreco}>
@@ -51,18 +62,36 @@ function ProdutoItem({ produto, onPress }: { produto: Produto; onPress: () => vo
 }
 
 export default function ProdutosScreen() {
-  const { produtos } = useProducts();
+  const { produtos, isLoading, error, carregarProdutos } = useProducts();
+  const { categorias } = useCategorias();
   const router = useRouter();
   const [busca, setBusca] = useState('');
   const [categoriaAtiva, setCategoriaAtiva] = useState('Todas');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await carregarProdutos();
+    setRefreshing(false);
+  };
 
   const produtosFiltrados = useMemo(() => {
     return produtos.filter((p) => {
       const matchBusca = p.nome.toLowerCase().includes(busca.toLowerCase());
-      const matchCategoria = categoriaAtiva === 'Todas' || p.categoria === categoriaAtiva;
+      const matchCategoria = categoriaAtiva === 'Todas' || p.categoria?.nome === categoriaAtiva;
       return matchBusca && matchCategoria;
     });
   }, [produtos, busca, categoriaAtiva]);
+
+  const todasCategorias = ['Todas', ...categorias.map(c => c.nome)];
+
+  if (isLoading && produtos.length === 0) {
+    return <LoadingView message="Carregando produtos..." />;
+  }
+
+  if (error && produtos.length === 0) {
+    return <ErrorView message={error} onRetry={carregarProdutos} />;
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -84,7 +113,7 @@ export default function ProdutosScreen() {
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={CATEGORIAS}
+          data={todasCategorias}
           keyExtractor={(item) => item}
           renderItem={({ item }) => (
             <TouchableOpacity
@@ -107,6 +136,13 @@ export default function ProdutosScreen() {
           <ProdutoItem produto={item} onPress={() => router.push(`/produtos/${item.id}`)} />
         )}
         contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[Colors.primary[500]]}
+          />
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyTexto}>Nenhum produto encontrado</Text>

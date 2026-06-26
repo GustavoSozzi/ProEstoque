@@ -1,9 +1,13 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+
+// Obter URL da API das variáveis de ambiente
+const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:3001/api';
 
 // Configuração base da API
 const api = axios.create({
-  baseURL: 'http://localhost:3001/api', // Altere para o IP da sua máquina se testar em dispositivo físico
+  baseURL: API_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

@@ -11,7 +11,7 @@ import {
     View,
 } from 'react-native';
 import { Colors, Radius, Spacing, Typography } from '../constants/theme';
-import { CATEGORIAS } from '../data/mockData';
+import { useCategorias } from '../hooks/useCategorias';
 import { ProdutoFormData, produtoSchema } from '../schemas/produtoSchema';
 import { Button } from './Button';
 
@@ -30,6 +30,8 @@ export function ProdutoForm({
   submitLabel = 'Salvar',
   isLoading,
 }: ProdutoFormProps) {
+  const { categorias, isLoading: loadingCategorias } = useCategorias();
+  
   const {
     control,
     handleSubmit,
@@ -38,7 +40,7 @@ export function ProdutoForm({
     resolver: zodResolver(produtoSchema),
     defaultValues: defaultValues || {
       nome: '',
-      categoria: '',
+      categoriaId: '',
       quantidade: 0,
       quantidadeMinima: 0,
       preco: 0,
@@ -74,24 +76,28 @@ export function ProdutoForm({
         {/* Categoria */}
         <View style={styles.field}>
           <Text style={styles.label}>Categoria *</Text>
-          <Controller
-            control={control}
-            name="categoria"
-            render={({ field: { onChange, value } }) => (
-              <View style={styles.chipsContainer}>
-                {CATEGORIAS.filter((c) => c !== 'Todas').map((cat) => (
-                  <Button
-                    key={cat}
-                    title={cat}
-                    variant={value === cat ? 'primary' : 'outline'}
-                    onPress={() => onChange(cat)}
-                    style={styles.chipButton}
-                  />
-                ))}
-              </View>
-            )}
-          />
-          {errors.categoria && <Text style={styles.errorText}>{errors.categoria.message}</Text>}
+          {loadingCategorias ? (
+            <Text style={styles.loadingText}>Carregando categorias...</Text>
+          ) : (
+            <Controller
+              control={control}
+              name="categoriaId"
+              render={({ field: { onChange, value } }) => (
+                <View style={styles.chipsContainer}>
+                  {categorias.map((cat) => (
+                    <Button
+                      key={cat.id}
+                      title={cat.nome}
+                      variant={value === cat.id ? 'primary' : 'outline'}
+                      onPress={() => onChange(cat.id)}
+                      style={styles.chipButton}
+                    />
+                  ))}
+                </View>
+              )}
+            />
+          )}
+          {errors.categoriaId && <Text style={styles.errorText}>{errors.categoriaId.message}</Text>}
         </View>
 
         {/* Quantidade e Quantidade Mínima */}
@@ -236,6 +242,11 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     color: Colors.danger.text,
     marginTop: Spacing[1],
+  },
+  loadingText: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
   },
   chipsContainer: {
     flexDirection: 'row',

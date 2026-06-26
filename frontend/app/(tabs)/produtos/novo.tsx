@@ -4,7 +4,7 @@ import { useProducts } from '@/src/contexts/ProductsContext';
 import { ProdutoFormData } from '@/src/schemas/produtoSchema';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { SafeAreaView, StyleSheet } from 'react-native';
+import { Alert, SafeAreaView, StyleSheet } from 'react-native';
 
 export default function NovoProdutoScreen() {
   const { adicionarProduto } = useProducts();
@@ -16,9 +16,10 @@ export default function NovoProdutoScreen() {
     try {
       const { id, ...produtoSemId } = data;
       await adicionarProduto(produtoSemId);
+      Alert.alert('Sucesso', 'Produto adicionado com sucesso!');
       router.back();
-    } catch (error) {
-      console.error('Erro ao adicionar produto:', error);
+    } catch (error: any) {
+      Alert.alert('Erro', error.message || 'Não foi possível adicionar o produto');
     } finally {
       setIsLoading(false);
     }
